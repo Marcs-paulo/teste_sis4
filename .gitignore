@@ -1,0 +1,8 @@
+# build do PlatformIO
+.pio/
+.vscode/
+# segredos (WiFi, URL do script): enviar por mensagem privada, nunca subir
+include/segredos.h
+# dados gerados
+painel/compartilhar/coentro-teste4.html
+*.xlsx

@@ -1,0 +1,27 @@
+PAINEL SIS — TESTE 4 (somente leitura)
+=====================================
+
+Arquivos:
+  painel.html      -> o site. Abra com dois cliques (Chrome/Edge). Funciona direto do PC.
+  leitura.gs       -> script de LEITURA para o Google Apps Script (projeto NOVO e separado).
+  appsscript.json  -> manifesto que limita a permissão a "somente leitura" da planilha.
+
+Este painel NÃO mexe no script que a ESP usa e NÃO escreve nada na planilha.
+
+CONFIGURAR (uma vez só)
+-----------------------
+1. Acesse script.google.com  ->  "Novo projeto". Dê o nome "SIS Painel Leitura".
+2. Apague o que vier no Código.gs e cole todo o conteúdo de leitura.gs. Salve.
+3. Engrenagem (Configurações do projeto) -> marque
+   "Mostrar arquivo de manifesto appsscript.json no editor".
+4. Volte ao Editor, abra appsscript.json, substitua tudo pelo conteúdo do
+   appsscript.json desta pasta. Salve.
+5. Implantar -> Nova implantação -> tipo "App da Web":
+     Executar como: Eu
+     Quem pode acessar: Qualquer pessoa
+   -> Implantar. Autorize (vai pedir só "ver suas planilhas" = leitura).
+6. Copie a URL que termina em /exec.
+7. Abra painel.html, cole a URL no campo e clique "Salvar e carregar".
+   O navegador lembra a URL; das próximas vezes é só abrir o arquivo.
+
+O painel se atualiza sozinho a cada 2 minutos (os dados chegam da ESP em lotes).

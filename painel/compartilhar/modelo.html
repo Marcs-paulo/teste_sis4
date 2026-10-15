@@ -1,0 +1,741 @@
+<title>Coentro · Teste 4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: relatório de estação de campo — veredito no topo, consumo da planta como seção principal,
+     painel completo em grade e análise escrita em coluna de leitura. */
+  :root {
+    --page: #f5f6f2;
+    --surface: #fcfcfa;
+    --ink: #121410;
+    --ink-2: #4f534a;
+    --muted: #7d8177;
+    --grid: #e2e4dc;
+    --axis: #c4c7bb;
+    --border: rgba(18,20,16,0.10);
+    --accent: #2f6b3a;
+    --s2: #2a78d6;
+    --s1: #eb6834;
+    --sem: #a3a69b;
+    --rega: rgba(27,175,122,0.16);
+    --rega-ink: #1baf7a;
+    --noite: rgba(18,20,16,0.04);
+    --ref: #4f534a;
+    --good: #0ca30c;
+    --warning: #c98500;
+    --info: #2a78d6;
+    --chip-good: rgba(12,163,12,0.10);
+    --chip-warn: rgba(250,178,25,0.16);
+    --chip-info: rgba(42,120,214,0.10);
+    --f-texto: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+    --f-dado: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0f110e; --surface: #181a16; --ink: #f2f3ee; --ink-2: #c2c5ba; --muted: #8a8e83;
+      --grid: #2a2d27; --axis: #3a3d36; --border: rgba(255,255,255,0.10); --accent: #7fbf86;
+      --s2: #3987e5; --s1: #d95926; --sem: #6f7368;
+      --rega: rgba(25,158,112,0.22); --rega-ink: #199e70; --noite: rgba(255,255,255,0.04); --ref: #c2c5ba;
+      --good: #0ca30c; --warning: #fab219; --info: #3987e5;
+      --chip-good: rgba(12,163,12,0.16); --chip-warn: rgba(250,178,25,0.14); --chip-info: rgba(57,135,229,0.16);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0f110e; --surface: #181a16; --ink: #f2f3ee; --ink-2: #c2c5ba; --muted: #8a8e83;
+    --grid: #2a2d27; --axis: #3a3d36; --border: rgba(255,255,255,0.10); --accent: #7fbf86;
+    --s2: #3987e5; --s1: #d95926; --sem: #6f7368;
+    --rega: rgba(25,158,112,0.22); --rega-ink: #199e70; --noite: rgba(255,255,255,0.04); --ref: #c2c5ba;
+    --good: #0ca30c; --warning: #fab219; --info: #3987e5;
+    --chip-good: rgba(12,163,12,0.16); --chip-warn: rgba(250,178,25,0.14); --chip-info: rgba(57,135,229,0.16);
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--page); color: var(--ink); font: 15px/1.55 var(--f-texto); }
+  .pagina { max-width: 1180px; margin: 0 auto; padding-inline: 18px; padding-block: 28px 56px; display: grid; gap: 34px; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.1; letter-spacing: -0.01em; }
+  h2 { font-size: 21px; line-height: 1.25; }
+  h3 { font-size: 15.5px; line-height: 1.3; }
+  .rotulo { font: 500 11.5px/1.3 var(--f-dado); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .dado { font-family: var(--f-dado); font-variant-numeric: tabular-nums; }
+  .fraco { color: var(--ink-2); }
+  .mudo { color: var(--muted); }
+  a { color: var(--accent); }
+
+  /* cabeçalho */
+  .topo { display: grid; gap: 10px; }
+  .topo .linha { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; color: var(--ink-2); font-size: 14px; }
+  .topo p { margin: 0; max-width: 68ch; color: var(--ink-2); }
+
+  /* veredito */
+  .veredito { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .achado { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .chip { justify-self: start; display: inline-flex; gap: 6px; align-items: center; font: 500 12px/1 var(--f-dado); padding: 5px 9px; border-radius: 999px; }
+  .chip.bom { background: var(--chip-good); color: var(--ink); }
+  .chip.atencao { background: var(--chip-warn); color: var(--ink); }
+  .chip.info { background: var(--chip-info); color: var(--ink); }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .achado b { font-size: 16px; line-height: 1.3; }
+  .achado span.t { color: var(--ink-2); font-size: 14px; }
+
+  /* seções */
+  section { display: grid; gap: 14px; }
+  .cab { display: grid; gap: 4px; }
+  .cab p { margin: 0; max-width: 70ch; color: var(--ink-2); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 16px 12px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .card .como { color: var(--ink-2); font-size: 13.5px; margin: 0; max-width: 72ch; }
+  .leg { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--ink-2); font-size: 13px; }
+  .leg i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: 3px; margin-right: 5px; }
+  .leg i.box { height: 10px; vertical-align: -1px; }
+  .leg i.tr { background: repeating-linear-gradient(90deg, var(--ref) 0 4px, transparent 4px 7px); }
+  .cv { position: relative; height: 290px; }
+  .cv.alto { height: 340px; }
+  .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr)); gap: 14px; }
+  .larga { grid-column: 1 / -1; }
+
+  /* consumo */
+  .consumo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 330px); gap: 14px; }
+  @media (max-width: 860px) { .consumo { grid-template-columns: 1fr; } }
+  .indice { display: grid; gap: 10px; align-content: start; }
+  .indice .num { font: 500 44px/1 var(--f-dado); letter-spacing: -0.02em; }
+  .indice dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 13.5px; }
+  .indice dt { color: var(--muted); }
+  .indice dd { margin: 0; text-align: right; font-family: var(--f-dado); font-variant-numeric: tabular-nums; }
+  .selo { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+  .selo.atencao { background: var(--chip-warn); }
+  .selo.bom { background: var(--chip-good); }
+  .selo.info { background: var(--chip-info); }
+
+  /* controles */
+  .barra { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: none; color: var(--ink-2); padding: 7px 12px; font: 14px var(--f-texto); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 700; }
+  .seg button:focus-visible, label.chk input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); cursor: pointer; font-size: 14px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .kpi .r { color: var(--muted); font-size: 12.5px; }
+  .kpi .v { font: 500 22px/1.2 var(--f-dado); margin-top: 3px; }
+  .kpi .d { color: var(--ink-2); font-size: 12.5px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+
+  /* análise escrita */
+  .analise { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px 28px; }
+  .bloco { display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .bloco p, .bloco li { max-width: 66ch; color: var(--ink); }
+  .bloco p { margin: 0; }
+  .bloco ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+  .bloco li::marker { color: var(--muted); }
+
+  .tabela { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font: 13px var(--f-dado); font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 9px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+  th { color: var(--muted); font: 600 12px var(--f-texto); position: sticky; top: 0; background: var(--surface); }
+  td:first-child, th:first-child, td:nth-child(2), th:nth-child(2) { text-align: left; }
+  footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--grid); padding-top: 14px; display: grid; gap: 4px; }
+  footer p { margin: 0; max-width: 80ch; }
+</style>
+
+<div class="pagina">
+  <header class="topo">
+    <span class="rotulo">SIS · estação de teste · sensor raso 5 cm</span>
+    <h1>Coentro · Teste 4</h1>
+    <div class="linha">
+      <span id="retrato" class="dado"></span>
+      <span id="contagem" class="dado"></span>
+    </div>
+    <p>Dois sensores capacitivos rasos: <b>S2</b> ao lado do coentro e <b>S1</b> em solo nu, recebendo a mesma rega. A pergunta é se o ponto da planta seca mais rápido que o solo nu, o que indicaria consumo de água pela planta. ADC maior = solo mais seco.</p>
+  </header>
+
+  <section aria-labelledby="t-veredito">
+    <div class="cab"><span class="rotulo" id="t-veredito">Resumo</span></div>
+    <div class="veredito" id="veredito"></div>
+  </section>
+
+  <section aria-labelledby="t-consumo">
+    <div class="cab">
+      <span class="rotulo">Consumo da planta</span>
+      <h2 id="t-consumo">O coentro está bebendo água?</h2>
+      <p>Toda manhã, entre a madrugada (3–6 h) e o fim da manhã (11–14 h), o solo seca. Comparamos quanto o ponto do coentro seca em relação ao solo nu no mesmo período (razão S2 ÷ S1). Antes do plantio essa razão mostra só a diferença de lugar; depois do plantio, se ela sobe, a diferença é o consumo da planta.</p>
+    </div>
+    <div class="consumo">
+      <article class="card">
+        <h3>Razão de secagem da manhã, por dia</h3>
+        <p class="como">Cada barra é um dia. Cinza = antes do plantio; azul = com o coentro. As linhas tracejadas são a mediana de cada fase.</p>
+        <div class="leg"><span><i class="box" style="background:var(--sem)"></i>sem cultura</span><span><i class="box" style="background:var(--s2)"></i>com coentro</span><span><i class="tr"></i>mediana da fase: <b class="dado" id="legMed">—</b></span></div>
+        <div class="cv alto"><canvas id="cIndice" aria-label="Razão de secagem da manhã S2 dividido por S1, por dia"></canvas></div>
+      </article>
+      <aside class="card indice" aria-labelledby="t-indice">
+        <h3 id="t-indice">Índice de consumo</h3>
+        <div class="num" id="indNum">—</div>
+        <div class="mudo" style="font-size:13.5px">variação da secagem do ponto do coentro, já descontada a diferença de lugar</div>
+        <div id="indSelo"></div>
+        <dl id="indDl"></dl>
+      </aside>
+    </div>
+    <div class="grade">
+      <article class="card">
+        <h3>Curva média depois da rega</h3>
+        <p class="como">Média de todas as regas do cultivo, relativa ao nível de 1 h antes de cada rega (0 = nível de antes). Mostra quanto a rega molha cada ponto e em quanto tempo o solo volta. Se o S2 voltar mais rápido que o S1, a planta está tirando água.</p>
+        <div class="leg"><span><i style="background:var(--s2)"></i>S2 · coentro</span><span><i style="background:var(--s1)"></i>S1 · solo nu</span></div>
+        <div class="cv"><canvas id="cCurva" aria-label="Variação média do ADC depois da rega"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Ciclo médio do dia: diferença S1 − S2 por fase</h3>
+        <p class="como">Média de cada hora do dia, sem a hora seguinte a cada rega. Se a curva com coentro fica mais baixa durante o dia que a curva sem cultura, o ponto da planta está secando relativamente mais.</p>
+        <div class="leg"><span><i style="background:var(--sem)"></i>sem cultura</span><span><i style="background:var(--s2)"></i>com coentro</span></div>
+        <div class="cv"><canvas id="cPerfilGap" aria-label="Diferença S1 menos S2 por hora do dia, por fase"></canvas></div>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-analise">
+    <div class="cab">
+      <span class="rotulo">Análise detalhada</span>
+      <h2 id="t-analise">O que os dados mostram até agora</h2>
+    </div>
+    <div class="analise" id="analise"></div>
+  </section>
+
+  <section aria-labelledby="t-painel">
+    <div class="cab">
+      <span class="rotulo">Painel</span>
+      <h2 id="t-painel">Leituras dos sensores</h2>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="barra">
+      <div class="seg" id="faixa" role="group" aria-label="Período dos gráficos de tempo">
+        <button type="button" id="f24" data-h="24">24 h</button>
+        <button type="button" id="f48" data-h="48">48 h</button>
+        <button type="button" id="f168" data-h="168">7 dias</button>
+        <button type="button" id="fplantio" data-h="plantio" aria-pressed="true">Desde o plantio</button>
+        <button type="button" id="ftudo" data-h="tudo">Tudo</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="inverter"> inverter eixo (cima = mais úmido)</label>
+    </div>
+    <div class="grade">
+      <article class="card larga">
+        <h3>Umidade dos dois sensores ao longo do tempo</h3>
+        <p class="como">Faixas verdes = rega (válvula aberta); faixas cinza = noite (18 h–6 h). O limiar de rega (1500) aparece tracejado quando o solo chega perto dele.</p>
+        <div class="leg"><span><i style="background:var(--s2)"></i>S2 · coentro</span><span><i style="background:var(--s1)"></i>S1 · solo nu</span><span><i class="box" style="background:var(--rega)"></i>rega</span><span><i class="tr"></i>limiar / plantio</span></div>
+        <div class="cv alto"><canvas id="cTempo" aria-label="ADC dos sensores S1 e S2 ao longo do tempo"></canvas></div>
+      </article>
+      <article class="card larga">
+        <h3>Diferença S1 − S2 (solo nu menos coentro)</h3>
+        <p class="como">A linha tracejada é a diferença normal medida sem cultura (calibração + lugar). Abaixo dela, o ponto do coentro está mais seco que o normal em relação ao solo nu.</p>
+        <div class="leg"><span><i style="background:var(--ink-2)"></i>S1 − S2</span><span><i class="tr"></i>referência sem cultura</span></div>
+        <div class="cv"><canvas id="cGap" aria-label="Diferença S1 menos S2 ao longo do tempo"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Abertura da diferença durante o dia</h3>
+        <p class="como">Diferença S1 − S2 ao meio-dia (11–14 h) menos a da madrugada (2–5 h). Perto de zero ou negativo = o coentro acompanha a secagem do solo nu.</p>
+        <div class="cv"><canvas id="cDelta" aria-label="Abertura diurna da diferença por dia"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Ciclo médio do S2: início vs. agora</h3>
+        <p class="como">Primeiros 3 dias inteiros de cultivo vs. últimos 3. Se a curva recente sobe mais durante o dia, o coentro está consumindo mais conforme cresce.</p>
+        <div class="leg" id="legPerfil"></div>
+        <div class="cv"><canvas id="cPerfilS2" aria-label="Ciclo médio do S2, início contra agora"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Minutos de rega por dia</h3>
+        <p class="como">Tempo total com a válvula aberta em cada dia do cultivo.</p>
+        <div class="cv"><canvas id="cRegaDia" aria-label="Minutos de rega por dia"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Intervalo entre regas</h3>
+        <p class="como">Horas desde a rega anterior. Travado em 24 h = rega pelo tempo máximo do firmware (o solo não chegou ao limiar). Abaixo de 24 h = rega disparada pela secura do solo.</p>
+        <div class="cv"><canvas id="cIntervalo" aria-label="Intervalo entre regas"></canvas></div>
+      </article>
+      <article class="card larga">
+        <h3>Resumo por dia</h3>
+        <p class="como">Os números por trás dos gráficos. Dias marcados como parciais não têm 24 h de dados.</p>
+        <div class="tabela"><table id="tabela"></table></div>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    <p id="rodape"></p>
+    <p>Somente leitura: esta página mostra uma cópia dos dados da planilha do Teste 4 no momento indicado acima e não altera nada nela. Leituras fora de 300–2600 ADC são descartadas (mesma faixa do firmware). Os valores vêm em janelas de 5 minutos (mediana).</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const DADOS = /*__DADOS__*/null;
+(function () {
+  'use strict';
+  var LIMIAR = 1500, H = 3600 * 1000, MIN = 60000;
+  var graficos = {}, faixa = 'plantio', inverter = false;
+
+  function ler(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function gravar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function cor(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  // ---------- formatação (fuso do Brasil, independente de onde a página é aberta) ----------
+  var FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  function partes(t) { var o = {}; FMT.formatToParts(new Date(t)).forEach(function (p) { o[p.type] = p.value; }); return o; }
+  function hora(t) { return Number(partes(t).hour) % 24; }
+  function chaveDia(t) { var p = partes(t); return p.year + '-' + p.month + '-' + p.day; }
+  function fData(t) { var p = partes(t); return p.day + '/' + p.month; }
+  function fHora(t) { var p = partes(t); return (p.hour === '24' ? '00' : p.hour) + ':' + p.minute; }
+  function fDataHora(t) { return fData(t) + ' ' + fHora(t); }
+  function rotuloDia(k) { var p = k.split('-'); return p[2] + '/' + p[1]; }
+  function num(v, c) { return v === null || v === undefined || isNaN(v) ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: c || 0, minimumFractionDigits: c || 0 }); }
+  function sinal(v, c) { return v === null || v === undefined || isNaN(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + num(Math.abs(v), c); }
+  function pct(v) { return v === null || isNaN(v) ? '—' : sinal((v - 1) * 100) + '%'; }
+  function media(a) { if (!a.length) return null; var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+  function mediana(a) { if (!a.length) return null; var b = a.slice().sort(function (x, y) { return x - y; }); var m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; }
+  function semente(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  // ---------- cálculos ----------
+  function preparar(d) {
+    var P = d.pontos.map(function (p) { return { t: p[0], s1: p[1], s2: p[2], ab: p[3], fase: p[4], h: hora(p[0]), k: chaveDia(p[0]) }; });
+    var regas = d.regas.map(function (r) { return { ini: r[0], fim: r[1] + 10000, ciclo: r[2] }; });
+    var plantio = null;
+    for (var i = 0; i < P.length; i++) if (P[i].fase === 1) { plantio = P[i].t; break; }
+    function perto(t) { for (var j = 0; j < regas.length; j++) if (t >= regas[j].ini - 5 * MIN && t <= regas[j].fim + H) return true; return false; }
+    P.forEach(function (p) { p.limpo = p.ab === 0 && !perto(p.t); });
+
+    var gs = [];
+    P.forEach(function (p) { if (p.fase === 0 && p.ab === 0 && p.s1 !== null && p.s2 !== null) gs.push(p.s1 - p.s2); });
+    var base = mediana(gs);
+
+    var dias = {}, ordem = [];
+    P.forEach(function (p) { if (!dias[p.k]) { dias[p.k] = []; ordem.push(p.k); } dias[p.k].push(p); });
+
+    var linhas = ordem.map(function (k) {
+      var pts = dias[k];
+      function janela(h0, h1, c) { return pts.filter(function (p) { return p.limpo && p.h >= h0 && p.h <= h1 && p[c] !== null; }).map(function (p) { return p[c]; }); }
+      function gap(h0, h1) { var a = pts.filter(function (p) { return p.ab === 0 && p.h >= h0 && p.h <= h1 && p.s1 !== null && p.s2 !== null; }).map(function (p) { return p.s1 - p.s2; }); return a.length >= 6 ? media(a) : null; }
+      // fase da manhã (é ela que conta no índice): dia do plantio ainda é "sem cultura" de manhã
+      var manha = pts.filter(function (p) { return p.h >= 3 && p.h <= 14; });
+      var faseManha = manha.length ? Math.round(media(manha.map(function (p) { return p.fase; }))) : 0;
+      var sub = {};
+      ['s1', 's2'].forEach(function (c) {
+        var ma = janela(3, 6, c), di = janela(11, 14, c);
+        sub[c] = (ma.length > 10 && di.length > 10) ? mediana(di) - mediana(ma) : null;
+      });
+      var r = regas.filter(function (x) { return chaveDia(x.ini) === k; });
+      var minR = 0; r.forEach(function (x) { minR += (x.fim - x.ini) / MIN; });
+      var v1 = pts.map(function (p) { return p.s1; }).filter(function (v) { return v !== null; });
+      var v2 = pts.map(function (p) { return p.s2; }).filter(function (v) { return v !== null; });
+      var gN = gap(2, 5), gD = gap(11, 14);
+      return {
+        k: k, fase: pts.some(function (p) { return p.fase === 1; }) ? 1 : 0, faseManha: faseManha,
+        cobertura: (pts[pts.length - 1].t - pts[0].t) / (24 * H),
+        sub1: sub.s1, sub2: sub.s2, razao: (sub.s1 !== null && sub.s2 !== null && sub.s1 >= 5) ? sub.s2 / sub.s1 : null,
+        gN: gN, gD: gD, delta: (gN !== null && gD !== null) ? gD - gN : null,
+        regas: r.length, minRega: minR,
+        s1med: mediana(v1), s2med: mediana(v2),
+        s2min: v2.length ? Math.min.apply(null, v2) : null, s2max: v2.length ? Math.max.apply(null, v2) : null
+      };
+    });
+
+    // índice de consumo: razão da secagem da manhã, com cultura ÷ sem cultura
+    var sem = linhas.filter(function (l) { return l.faseManha === 0 && l.razao !== null; });
+    var com = linhas.filter(function (l) { return l.faseManha === 1 && l.razao !== null; });
+    function razaoSomas(g) { var a = 0, b = 0; g.forEach(function (l) { a += l.sub2; b += l.sub1; }); return b ? a / b : null; }
+    var est = { nSem: sem.length, nCom: com.length };
+    if (sem.length >= 3 && com.length >= 3) {
+      est.medSem = mediana(sem.map(function (l) { return l.razao; }));
+      est.medCom = mediana(com.map(function (l) { return l.razao; }));
+      est.somaSem = razaoSomas(sem); est.somaCom = razaoSomas(com);
+      // índice principal: mediana dos dias (robusta a um dia atípico); a versão "pesada pelo tamanho
+      // da secagem" (razão das somas) é mostrada junto para ver se as duas concordam
+      est.indice = est.medCom / est.medSem;
+      est.indiceSomas = est.somaCom / est.somaSem;
+      var rnd = semente(20261009), bs = [];
+      var razoes = function (g) { return g.map(function (l) { return l.razao; }); };
+      for (var b = 0; b < 3000; b++) {
+        var a1 = [], a2 = [];
+        for (var x = 0; x < sem.length; x++) a1.push(sem[Math.floor(rnd() * sem.length)]);
+        for (var y = 0; y < com.length; y++) a2.push(com[Math.floor(rnd() * com.length)]);
+        var q = mediana(razoes(a1)), w = mediana(razoes(a2));
+        if (q) bs.push(w / q);
+      }
+      bs.sort(function (m, n) { return m - n; });
+      est.ic = [bs[Math.floor(bs.length * 0.05)], bs[Math.floor(bs.length * 0.95)]];
+      var todos = sem.concat(com).map(function (l) { return l.razao; }), obs = est.medCom - est.medSem, cont = 0, N = 4000;
+      for (var z = 0; z < N; z++) {
+        var e = todos.slice();
+        for (var s = e.length - 1; s > 0; s--) { var j2 = Math.floor(rnd() * (s + 1)); var tmp = e[s]; e[s] = e[j2]; e[j2] = tmp; }
+        if (mediana(e.slice(sem.length)) - mediana(e.slice(0, sem.length)) >= obs) cont++;
+      }
+      est.p = cont / N;
+      est.subSem = [mediana(sem.map(function (l) { return l.sub1; })), mediana(sem.map(function (l) { return l.sub2; }))];
+      est.subCom = [mediana(com.map(function (l) { return l.sub1; })), mediana(com.map(function (l) { return l.sub2; }))];
+    }
+
+    // curva média depois da rega (regas do cultivo, menos a do plantio)
+    var regasCult = plantio ? regas.filter(function (r) { return r.ini > plantio + 2 * H; }) : [];
+    var curva = { x: [], s1: [], s2: [] };
+    var porT = function (a, b, c) { var v = []; for (var q2 = 0; q2 < P.length; q2++) { var p = P[q2]; if (p.t >= a && p.t < b && p[c] !== null) v.push(p[c]); } return v.length ? mediana(v) : null; };
+    var bases = regasCult.map(function (r) { return { s1: porT(r.ini - H, r.ini, 's1'), s2: porT(r.ini - H, r.ini, 's2') }; });
+    for (var m = -60; m <= 1380; m += 15) {
+      curva.x.push(m / 60);
+      ['s1', 's2'].forEach(function (c) {
+        var vs = [];
+        regasCult.forEach(function (r, ix) {
+          var v = porT(r.ini + (m - 7.5) * MIN, r.ini + (m + 7.5) * MIN, c);
+          if (v !== null && bases[ix][c] !== null) vs.push(v - bases[ix][c]);
+        });
+        curva[c].push(vs.length >= Math.max(2, regasCult.length / 2) ? media(vs) : null);
+      });
+    }
+
+    function perfil(filtro, campo) {
+      var bk = []; for (var h = 0; h < 24; h++) bk.push([]);
+      P.forEach(function (p) {
+        if (!filtro(p) || !p.limpo) return;
+        var v = campo === 'gap' ? (p.s1 !== null && p.s2 !== null ? p.s1 - p.s2 : null) : p[campo];
+        if (v !== null) bk[p.h].push(v);
+      });
+      return bk.map(function (a) { return a.length >= 3 ? media(a) : null; });
+    }
+    var cheios = linhas.filter(function (l) { return l.fase === 1 && l.faseManha === 1 && l.cobertura > 0.9; }).map(function (l) { return l.k; });
+    var ini3 = cheios.slice(0, 3), fim3 = cheios.slice(-3);
+
+    var intervalos = [];
+    for (var jj = 1; jj < regas.length; jj++) if (plantio && regas[jj - 1].ini >= plantio - H) intervalos.push({ t: regas[jj].ini, h: (regas[jj].ini - regas[jj - 1].ini) / H });
+
+    // faixa de umidade antes × durante o cultivo (percentis 5–95)
+    function faixaPct(a, b, c) {
+      var v = P.filter(function (p) { return p.t >= a && p.t < b && p[c] !== null; }).map(function (p) { return p[c]; }).sort(function (x1, x2) { return x1 - x2; });
+      return v.length ? [v[Math.floor(v.length * 0.05)], mediana(v), v[Math.floor(v.length * 0.95)]] : null;
+    }
+    var ult = P.length ? P[P.length - 1].t : 0;
+    var faixas = plantio ? {
+      antes: { s1: faixaPct(plantio - 10 * 24 * H, plantio - H, 's1'), s2: faixaPct(plantio - 10 * 24 * H, plantio - H, 's2') },
+      cult: { s1: faixaPct(plantio + 24 * H, ult + 1, 's1'), s2: faixaPct(plantio + 24 * H, ult + 1, 's2') },
+      maxS2cult: Math.max.apply(null, P.filter(function (p) { return p.t > plantio + 24 * H && p.s2 !== null; }).map(function (p) { return p.s2; }).concat([0]))
+    } : null;
+    var regasDia = regasCult.map(function (r) { return fHora(r.ini); });
+
+    return {
+      bruto: d, P: P, regas: regas, regasCult: regasCult, plantio: plantio, base: base, dias: linhas, est: est, curva: curva,
+      intervalos: intervalos, faixas: faixas, regasDia: regasDia,
+      perfilGapSem: perfil(function (p) { return p.fase === 0; }, 'gap'),
+      perfilGapCom: perfil(function (p) { return p.fase === 1; }, 'gap'),
+      perfilIni: perfil(function (p) { return ini3.indexOf(p.k) >= 0; }, 's2'),
+      perfilFim: perfil(function (p) { return fim3.indexOf(p.k) >= 0; }, 's2'),
+      ini3: ini3, fim3: fim3
+    };
+  }
+
+  // ---------- plugin: faixas de rega, noite, linhas de referência ----------
+  Chart.register({
+    id: 'faixas',
+    beforeDatasetsDraw: function (ch, args, o) {
+      if (!o || (!o.regas && !o.noite && !o.vlinhas && !o.hlinhas)) return;
+      var x = ch.scales.x, y = ch.scales.y, a = ch.chartArea, c = ch.ctx;
+      c.save();
+      c.beginPath(); c.rect(a.left, a.top, a.right - a.left, a.bottom - a.top); c.clip();
+      if (o.noite) {
+        c.fillStyle = cor('--noite');
+        // primeira virada 18h (horário de Brasília) antes do início
+        var t0 = x.min - 30 * H; while (hora(t0) !== 18) t0 += H; t0 = Math.floor(t0 / H) * H; while (hora(t0) !== 18) t0 += H;
+        for (var t = t0; t < x.max; t += 24 * H) {
+          var p0 = x.getPixelForValue(t), p1 = x.getPixelForValue(t + 12 * H);
+          c.fillRect(p0, a.top, p1 - p0, a.bottom - a.top);
+        }
+      }
+      if (o.regas) {
+        c.fillStyle = cor('--rega');
+        o.regas.forEach(function (r) {
+          if (r.fim < x.min || r.ini > x.max) return;
+          var p0 = x.getPixelForValue(r.ini), p1 = x.getPixelForValue(r.fim);
+          c.fillRect(p0, a.top, Math.max(2, p1 - p0), a.bottom - a.top);
+        });
+      }
+      c.setLineDash([5, 4]); c.lineWidth = 1.25; c.strokeStyle = cor('--ref'); c.fillStyle = cor('--ink-2');
+      c.font = '12px ' + cor('--f-texto');
+      (o.hlinhas || []).forEach(function (l) {
+        if (l.y === null || l.y === undefined) return;
+        var py = y.getPixelForValue(l.y);
+        if (py < a.top || py > a.bottom) return;
+        if (l.cor) c.strokeStyle = l.cor;
+        c.beginPath(); c.moveTo(a.left, py); c.lineTo(a.right, py); c.stroke();
+        c.strokeStyle = cor('--ref');
+        if (l.rot) { c.textAlign = 'right'; c.fillText(l.rot, a.right - 4, py - 5); }
+      });
+      (o.vlinhas || []).forEach(function (l) {
+        if (l.x < x.min || l.x > x.max) return;
+        var px = x.getPixelForValue(l.x);
+        c.beginPath(); c.moveTo(px, a.top); c.lineTo(px, a.bottom); c.stroke();
+        if (l.rot) { c.textAlign = 'left'; c.fillText(l.rot, px + 4, a.top + 13); }
+      });
+      c.restore();
+    }
+  });
+
+  function opcoes(tipo) {
+    Chart.defaults.font.family = cor('--f-texto');
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = cor('--muted');
+    return {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: cor('--surface'), titleColor: cor('--ink'), bodyColor: cor('--ink-2'), borderColor: cor('--axis'), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+                   titleFont: { family: cor('--f-dado') }, bodyFont: { family: cor('--f-dado') } }
+      },
+      scales: {
+        x: { grid: { display: tipo === 'tempo', color: cor('--grid'), drawTicks: false }, border: { color: cor('--axis') }, ticks: { padding: 6, maxRotation: 0, autoSkipPadding: 14 } },
+        y: { grid: { color: cor('--grid'), drawTicks: false }, border: { display: false }, ticks: { padding: 8 } }
+      }
+    };
+  }
+  function grafico(id, cfg) { if (graficos[id]) graficos[id].destroy(); graficos[id] = new Chart(document.getElementById(id), cfg); }
+  function serie(rot, v, pts, extra) {
+    var o = { label: rot, data: pts, borderColor: cor(v), backgroundColor: cor(v), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4,
+              pointHoverBorderWidth: 2, pointHoverBorderColor: cor('--surface'), tension: 0.15, spanGaps: 20 * MIN };
+    for (var k in extra) o[k] = extra[k];
+    return o;
+  }
+  function faixaY(valores, incluir) {
+    var v = valores.filter(function (x) { return x !== null && !isNaN(x); }).sort(function (a, b) { return a - b; });
+    if (!v.length) return {};
+    var lo = v[Math.floor(v.length * 0.005)], hi = v[Math.min(v.length - 1, Math.ceil(v.length * 0.995) - 1)];
+    (incluir || []).forEach(function (x) { if (x !== null && x !== undefined) { lo = Math.min(lo, x); hi = Math.max(hi, x); } });
+    var pad = Math.max(10, (hi - lo) * 0.08);
+    return { min: Math.floor((lo - pad) / 10) * 10, max: Math.ceil((hi + pad) / 10) * 10 };
+  }
+  function janela(D) {
+    var P = D.P, fimT = P.length ? P[P.length - 1].t : 0, iniT;
+    if (faixa === 'tudo') iniT = P.length ? P[0].t : fimT;
+    else if (faixa === 'plantio') iniT = (D.plantio || P[0].t) - 6 * H;
+    else iniT = fimT - Number(faixa) * H;
+    return [iniT, fimT];
+  }
+  function eixoTempo(j) {
+    var dur = j[1] - j[0];
+    return { type: 'linear', min: j[0], max: j[1], grid: { color: cor('--grid'), drawTicks: false }, border: { color: cor('--axis') },
+             ticks: { padding: 6, maxRotation: 0, autoSkipPadding: 18, callback: function (v) { return dur <= 50 * H ? fDataHora(v) : fData(v); } } };
+  }
+  function tituloY(o, txt) { o.scales.y.title = { display: true, text: txt, color: cor('--muted') }; }
+
+  // ---------- textos que dependem dos números ----------
+  function achado(classe, chip, titulo, texto) {
+    return '<div class="achado"><span class="chip ' + classe + '"><i style="background:var(--' + (classe === 'bom' ? 'good' : classe === 'atencao' ? 'warning' : 'info') + ')"></i>' + chip + '</span><b>' + titulo + '</b><span class="t">' + texto + '</span></div>';
+  }
+  function veredicto(est) {
+    if (est.indice === undefined) return { classe: 'info', chip: 'dados insuficientes', frase: 'Ainda não há dias suficientes nas duas fases para comparar.' };
+    if (est.ic[0] > 1 && est.p < 0.05 && est.indiceSomas > 1) return { classe: 'bom', chip: 'consumo detectado', frase: 'O ponto do coentro seca mais que o esperado pelo lugar, e a diferença é consistente entre os dias e entre os dois jeitos de medir.' };
+    if (est.indice > 1.05 && est.indiceSomas > 1.05) return { classe: 'atencao', chip: 'indício, não comprovado', frase: 'O ponto do coentro passou a secar um pouco mais que o esperado pelo lugar, mas a variação entre dias ainda é grande demais para afirmar.' };
+    if (est.indice > 1.05) return { classe: 'atencao', chip: 'inconclusivo', frase: 'Pela mediana dos dias o ponto do coentro seca mais que o esperado, mas pesando pelos dias de maior secagem a diferença some. Ainda não dá para afirmar consumo.' };
+    return { classe: 'info', chip: 'sem sinal de consumo', frase: 'O ponto do coentro seca no mesmo ritmo esperado pelo lugar. Ainda não aparece consumo mensurável.' };
+  }
+
+  function desenharTextos(D) {
+    var d = D.bruto, u = d.ultima, est = D.est, f = D.faixas, ve = veredicto(est);
+    document.getElementById('retrato').textContent = 'Retrato dos dados: ' + fDataHora(d.atualizado) + ' (horário de Brasília)';
+    document.getElementById('contagem').textContent = d.nLeituras.toLocaleString('pt-BR') + ' leituras · ' + D.regasCult.length + ' regas no cultivo';
+    var diasCult = D.plantio && u ? (u.t - D.plantio) / (24 * H) : null;
+    var todas24 = D.intervalos.length && D.intervalos.every(function (x) { return Math.abs(x.h - 24) < 0.5; });
+
+    var h = '';
+    h += achado('bom', 'sistema estável', 'Coletando e regando sem falhas', num(diasCult, 1) + ' dias de cultivo, ' + D.regasCult.length + ' regas de ~' + num(media(D.regasCult.map(function (r) { return (r.fim - r.ini) / MIN; }))) + ' min, sem buracos nos dados.');
+    h += achado(todas24 ? 'atencao' : 'info', todas24 ? 'rega pelo relógio' : 'rega pela umidade', todas24 ? 'A rega é disparada pelo tempo máximo de 24 h' : 'Parte das regas veio da umidade do solo',
+      todas24 ? 'Todas as regas vieram a cada 24 h, por volta das ' + (D.regasDia[0] || '—') + '. O S2 chegou no máximo a ' + num(f && f.maxS2cult) + ', longe do limiar de 1500, então o controle por umidade nunca atuou.'
+              : 'Intervalos menores que 24 h indicam que o solo chegou ao limiar de rega.');
+    if (f && f.cult.s2 && f.antes.s2) h += achado('info', 'solo sempre úmido', 'A rega diária mantém o solo quase saturado',
+      'No cultivo, o S2 ficou entre ' + num(f.cult.s2[0]) + ' e ' + num(f.cult.s2[2]) + ' (faixa de ' + num(f.cult.s2[2] - f.cult.s2[0]) + ' ADC). Nos 10 dias antes do plantio, sem rega, ia de ' + num(f.antes.s2[0]) + ' a ' + num(f.antes.s2[2]) + '.');
+    h += achado(ve.classe, ve.chip, 'Índice de consumo: ' + (est.indice !== undefined ? pct(est.indice) : '—'), ve.frase);
+    document.getElementById('veredito').innerHTML = h;
+
+    document.getElementById('indNum').textContent = est.indice !== undefined ? pct(est.indice) : '—';
+    document.getElementById('indSelo').innerHTML = '<div class="selo ' + ve.classe + '"><span>' + ve.chip.charAt(0).toUpperCase() + ve.chip.slice(1) + '. ' + ve.frase + '</span></div>';
+    var dl = '';
+    if (est.indice !== undefined) {
+      dl += '<dt>Razão S2÷S1 sem cultura</dt><dd>' + num(est.medSem, 2) + ' <span class="mudo">(' + est.nSem + ' dias)</span></dd>';
+      dl += '<dt>Razão S2÷S1 com coentro</dt><dd>' + num(est.medCom, 2) + ' <span class="mudo">(' + est.nCom + ' dias)</span></dd>';
+      dl += '<dt>Intervalo de confiança 90%</dt><dd>' + pct(est.ic[0]) + ' a ' + pct(est.ic[1]) + '</dd>';
+      dl += '<dt>Chance de ser acaso (p)</dt><dd>' + num(est.p, 2) + '</dd>';
+      dl += '<dt>Pesando pelos dias de maior secagem</dt><dd>' + pct(est.indiceSomas) + '</dd>';
+      dl += '<dt>Secagem da manhã S1 / S2</dt><dd>' + num(est.subCom[0]) + ' / ' + num(est.subCom[1]) + ' ADC</dd>';
+    }
+    document.getElementById('indDl').innerHTML = dl;
+
+    // análise escrita
+    var c = D.curva, i2 = c.x.indexOf(2), i23 = c.x.indexOf(23);
+    var minS2 = Math.min.apply(null, c.s2.filter(function (v) { return v !== null; }).concat([0]));
+    var minS1 = Math.min.apply(null, c.s1.filter(function (v) { return v !== null; }).concat([0]));
+    var A = '';
+    A += '<div class="bloco"><h3>1. O sistema</h3><p>A estação está funcionando sem falhas: os dois sensores leem valores válidos o tempo todo e a válvula abre uma vez por dia, ' + num(media(D.regasCult.map(function (r) { return (r.fim - r.ini) / MIN; }))) + ' minutos por vez. ' +
+         (todas24 ? 'Só que todas as regas aconteceram exatamente a cada 24 horas, por volta das ' + (D.regasDia[0] || '—') + '. Isso é o tempo máximo entre regas do firmware. O limiar de umidade (1500 ADC) nunca foi alcançado: o maior valor do S2 no cultivo foi ' + num(f && f.maxS2cult) + '. Na prática, o teste está rodando como uma <b>rega por horário</b>, e não por umidade.' : '') + '</p></div>';
+    if (f && f.cult.s2) A += '<div class="bloco"><h3>2. O solo</h3><p>Com rega todo dia, o solo fica sempre úmido. A mediana do S2 caiu de ' + num(f.antes.s2[1]) + ' (10 dias antes do plantio, sem rega) para ' + num(f.cult.s2[1]) + ' no cultivo, e o S1 de ' + num(f.antes.s1[1]) + ' para ' + num(f.cult.s1[1]) + '. A faixa de variação do S2 encolheu para ' + num(f.cult.s2[2] - f.cult.s2[0]) + ' ADC. Antes, sem rega, o mesmo solo chegou a ' + num(f.antes.s1[2]) + ' no S1. A planta não passa nenhum aperto de água, o que é bom para ela, mas esconde o consumo: com o solo quase encharcado, a água que a planta tira é reposta antes de aparecer no sensor.</p></div>';
+    A += '<div class="bloco"><h3>3. A rega molha os dois pontos</h3><p>A cada rega o S2 cai em média ' + num(-minS2) + ' ADC e o S1 ' + num(-minS1) + ' ADC, então o solo nu também recebe água. Por isso o S1 é uma comparação justa: <b>mesma água, sem planta</b>. ' +
+         (i23 >= 0 && c.s2[i23] !== null ? 'Depois de 23 horas, o S2 está ' + sinal(c.s2[i23]) + ' e o S1 ' + sinal(c.s1[i23]) + ' ADC em relação ao nível de antes da rega. ' : '') + 'Se a planta estivesse consumindo muito, o S2 voltaria ao nível de antes mais rápido que o S1.</p></div>';
+    if (est.indice !== undefined) A += '<div class="bloco"><h3>4. O consumo do coentro</h3><p>Antes do plantio, o ponto do S2 secava de manhã ' + num(est.medSem, 2) + ' vezes o que o S1 secava, porque pega menos sol. Com o coentro, essa razão passou para ' + num(est.medCom, 2) + '. Comparando as medianas, o ponto da planta está secando <b>' + pct(est.indice) + '</b> em relação ao esperado pelo lugar. O intervalo de confiança vai de ' + pct(est.ic[0]) + ' a ' + pct(est.ic[1]) + ' e a chance de ser acaso é ' + num(est.p, 2) + '. Somando a secagem de todos os dias, o que dá mais peso aos dias em que o solo secou mais, o resultado é ' + pct(est.indiceSomas) + '. ' +
+         ((est.indice > 1) === (est.indiceSomas > 1) && est.ic[0] > 1 ? 'Os dois jeitos de medir concordam e o sinal é consistente.' : 'Como os dois jeitos de medir não concordam e o intervalo inclui o zero, o consumo do coentro ainda não aparece de forma confiável nos sensores. Isso não quer dizer que a planta não bebe água: quer dizer que, com o teste rodando como está, o consumo dela é menor do que os sensores conseguem separar do ruído.') + '</p></div>';
+    A += '<div class="bloco"><h3>5. Por que o sinal é fraco</h3><ul>' +
+         '<li><b>Resolução do sensor:</b> as leituras andam em degraus de cerca de 16 ADC (961, 977, 993…). A secagem de uma manhã inteira é de 1 a 3 degraus.</li>' +
+         '<li><b>Solo quase saturado:</b> a rega diária repõe a água antes de o consumo aparecer, e o sensor capacitivo muda pouco perto da saturação.</li>' +
+         '<li><b>Planta pequena:</b> o coentro foi plantado como talo e, nos primeiros dias, quase não tinha folha. A transpiração cresce com a área de folha.</li>' +
+         '<li><b>Pouco sol no ponto do S2:</b> menos sol = menos evaporação e menos transpiração naquele ponto.</li>' +
+         '<li><b>Duas mudanças ao mesmo tempo:</b> o plantio coincidiu com o início da rega diária, então parte da mudança na razão pode vir do solo mais úmido e não da planta.</li></ul></div>';
+    A += '<div class="bloco"><h3>6. Como medir o consumo de verdade</h3><p>Sugestões para o próximo ciclo. Nada disso foi alterado no teste atual.</p><ul>' +
+         '<li><b>Deixar o solo secar entre regas:</b> aumentar o tempo máximo de 24 h para 48–72 h, ou baixar o limiar para perto de 1100–1150, para a rega ser decidida pela umidade. Com o solo secando, o consumo da planta aparece como uma descida mais rápida no S2.</li>' +
+         '<li><b>Ganhar resolução:</b> tirar a média de muitas leituras por amostra (por exemplo 64) antes de gravar, para sair dos degraus de 16 ADC.</li>' +
+         '<li><b>Rodar um período sem cultura com a mesma rega diária:</b> assim a razão de referência é medida no mesmo regime de umidade, e a única diferença entre as fases é a planta.</li>' +
+         '<li><b>Registrar a planta:</b> uma foto por dia, ou altura e número de folhas, para cruzar o crescimento com o índice de consumo.</li>' +
+         '<li><b>Mais tempo:</b> com cerca de 20 dias de cultivo o intervalo de confiança fica bem mais estreito.</li></ul></div>';
+    document.getElementById('analise').innerHTML = A;
+
+    document.getElementById('rodape').textContent = 'Retrato gerado em ' + fDataHora(d.atualizado) + '. Última leitura da placa nesse momento: ' + (u ? fDataHora(u.t) : '—') + '. Para ver dados mais novos, a página precisa ser atualizada a partir da planilha.';
+  }
+
+  function kpi(r, v, d, ponto) {
+    return '<div class="kpi"><div class="r">' + (ponto ? '<span class="dot" style="background:' + ponto + '"></span>' : '') + r + '</div><div class="v">' + v + '</div><div class="d">' + (d || '') + '</div></div>';
+  }
+
+  // ---------- desenho ----------
+  function desenhar() {
+    var D = PRONTO, P = D.P, u = D.bruto.ultima, est = D.est;
+    desenharTextos(D);
+
+    // KPIs (no momento do retrato)
+    var fimT = P.length ? P[P.length - 1].t : 0;
+    var ultH = P.filter(function (p) { return p.t > fimT - H && p.ab === 0; });
+    var s2h = mediana(ultH.map(function (p) { return p.s2; }).filter(function (v) { return v !== null; }));
+    var s1h = mediana(ultH.map(function (p) { return p.s1; }).filter(function (v) { return v !== null; }));
+    var ur = D.regas.length ? D.regas[D.regas.length - 1] : null;
+    var k = '';
+    k += kpi('S2 · coentro (última hora)', num(s2h), s2h !== null ? 'faltavam ' + num(LIMIAR - s2h) + ' p/ o limiar' : '', cor('--s2'));
+    k += kpi('S1 · solo nu (última hora)', num(s1h), s1h !== null && s2h !== null ? 'S1 − S2 = ' + sinal(s1h - s2h) : '', cor('--s1'));
+    k += kpi('Válvula', u ? (u.aberta ? 'aberta' : 'fechada') : '—', u && u.ciclo !== null ? 'ciclo ' + u.ciclo : '');
+    k += kpi('Última rega', ur ? fDataHora(ur.ini) : '—', ur ? num((ur.fim - ur.ini) / MIN) + ' min' : '');
+    k += kpi('Plantio', D.plantio ? fData(D.plantio) : '—', D.plantio ? 'às ' + fHora(D.plantio) : '');
+    k += kpi('Referência sem cultura', sinal(D.base), 'S1 − S2 normal');
+    document.getElementById('kpis').innerHTML = k;
+
+    // índice por dia
+    var diasI = D.dias.filter(function (l) { return l.razao !== null; });
+    var oI = opcoes('cat');
+    tituloY(oI, 'secagem S2 ÷ secagem S1');
+    oI.scales.y.suggestedMin = 0;
+    oI.plugins.faixas = { hlinhas: [{ y: est.medSem, cor: cor('--sem') }, { y: est.medCom, cor: cor('--s2') }] };
+    document.getElementById('legMed').textContent = 'sem ' + num(est.medSem, 2) + ' · com ' + num(est.medCom, 2);
+    oI.plugins.tooltip.callbacks = { label: function (c) { var l = diasI[c.dataIndex]; return [' razão: ' + num(c.parsed.y, 2), ' manhã S1 ' + sinal(l.sub1) + ' · S2 ' + sinal(l.sub2) + ' ADC']; } };
+    grafico('cIndice', { type: 'bar', options: oI, data: { labels: diasI.map(function (l) { return rotuloDia(l.k); }), datasets: [{
+      label: 'razão', data: diasI.map(function (l) { return Math.round(l.razao * 100) / 100; }),
+      backgroundColor: diasI.map(function (l) { return l.faseManha ? cor('--s2') : cor('--sem'); }), borderRadius: 4, borderSkipped: false, maxBarThickness: 22
+    }] } });
+
+    // curva pós-rega
+    var oC = opcoes('cat');
+    oC.scales.x = { type: 'linear', min: -1, max: 23, grid: { display: false }, border: { color: cor('--axis') }, ticks: { stepSize: 3, callback: function (v) { return (v > 0 ? '+' : '') + v + ' h'; } } };
+    tituloY(oC, 'ADC em relação a antes da rega');
+    oC.plugins.faixas = { hlinhas: [{ y: 0, rot: 'nível de antes' }], vlinhas: [{ x: 0, rot: 'rega' }] };
+    oC.plugins.tooltip.callbacks = { title: function (it) { return it.length ? (it[0].parsed.x >= 0 ? '+' : '') + num(it[0].parsed.x, 2) + ' h' : ''; }, label: function (c) { return ' ' + c.dataset.label + ': ' + sinal(c.parsed.y, 1); } };
+    grafico('cCurva', { type: 'line', options: oC, data: { datasets: [
+      serie('S2 · coentro', '--s2', D.curva.x.map(function (x, i) { return { x: x, y: D.curva.s2[i] }; }), { spanGaps: true }),
+      serie('S1 · solo nu', '--s1', D.curva.x.map(function (x, i) { return { x: x, y: D.curva.s1[i] }; }), { spanGaps: true })
+    ] } });
+
+    var horas = []; for (var hh = 0; hh < 24; hh++) horas.push((hh < 10 ? '0' : '') + hh + 'h');
+    var oG = opcoes('cat');
+    tituloY(oG, 'S1 − S2 (ADC)');
+    oG.plugins.tooltip.callbacks = { label: function (c) { return ' ' + c.dataset.label + ': ' + sinal(c.parsed.y); } };
+    grafico('cPerfilGap', { type: 'line', options: oG, data: { labels: horas, datasets: [
+      serie('sem cultura', '--sem', D.perfilGapSem.map(function (v) { return v === null ? null : Math.round(v); })),
+      serie('com coentro', '--s2', D.perfilGapCom.map(function (v) { return v === null ? null : Math.round(v); }))
+    ] } });
+
+    // painel de tempo
+    var j = janela(D), vis = P.filter(function (p) { return p.t >= j[0] && p.t <= j[1]; });
+    var o1 = opcoes('tempo');
+    o1.scales.x = eixoTempo(j);
+    o1.scales.y.reverse = inverter;
+    var fy1 = faixaY(vis.map(function (p) { return p.s1; }).concat(vis.map(function (p) { return p.s2; })));
+    o1.scales.y.min = fy1.min; o1.scales.y.max = fy1.max;
+    tituloY(o1, inverter ? 'ADC (↑ mais úmido)' : 'ADC (↑ mais seco)');
+    o1.plugins.faixas = { regas: D.regas, noite: true, hlinhas: [{ y: LIMIAR, rot: 'limiar de rega' }], vlinhas: D.plantio ? [{ x: D.plantio, rot: 'plantio' }] : [] };
+    o1.plugins.tooltip.callbacks = { title: function (it) { return it.length ? fDataHora(it[0].parsed.x) : ''; }, label: function (c) { return ' ' + c.dataset.label + ': ' + num(c.parsed.y); } };
+    grafico('cTempo', { type: 'line', options: o1, data: { datasets: [
+      serie('S2 · coentro', '--s2', vis.map(function (p) { return { x: p.t, y: p.s2 }; })),
+      serie('S1 · solo nu', '--s1', vis.map(function (p) { return { x: p.t, y: p.s1 }; }))
+    ] } });
+
+    var o2 = opcoes('tempo');
+    o2.scales.x = eixoTempo(j);
+    tituloY(o2, 'S1 − S2 (ADC)');
+    var fy2 = faixaY(vis.map(function (p) { return (p.s1 !== null && p.s2 !== null && p.ab === 0) ? p.s1 - p.s2 : null; }), [D.base]);
+    o2.scales.y.min = fy2.min; o2.scales.y.max = fy2.max;
+    o2.plugins.faixas = { regas: D.regas, noite: true, hlinhas: [{ y: D.base, rot: 'sem cultura: ' + sinal(D.base) }], vlinhas: D.plantio ? [{ x: D.plantio, rot: 'plantio' }] : [] };
+    o2.plugins.tooltip.callbacks = { title: function (it) { return it.length ? fDataHora(it[0].parsed.x) : ''; }, label: function (c) { return ' S1 − S2: ' + sinal(c.parsed.y) + '  (vs. ref. ' + sinal(c.parsed.y - D.base) + ')'; } };
+    grafico('cGap', { type: 'line', options: o2, data: { datasets: [
+      serie('S1 − S2', '--ink-2', vis.map(function (p) { return { x: p.t, y: (p.s1 !== null && p.s2 !== null && p.ab === 0) ? p.s1 - p.s2 : null }; }), { borderWidth: 1.5 })
+    ] } });
+
+    var diasG = D.dias.filter(function (l) { return l.fase === 1 || (D.plantio && new Date(l.k + 'T12:00:00-03:00').getTime() > D.plantio - 4 * 24 * H); });
+    var rot = diasG.map(function (l) { return rotuloDia(l.k) + (l.fase ? '' : ' (sem)'); });
+    var o3 = opcoes('cat');
+    tituloY(o3, 'meio-dia − madrugada (ADC)');
+    o3.plugins.faixas = { hlinhas: [{ y: 0 }] };
+    o3.plugins.tooltip.callbacks = { label: function (c) { var l = diasG[c.dataIndex]; return [' abertura: ' + sinal(c.parsed.y), ' madrugada ' + sinal(l.gN) + ' · meio-dia ' + sinal(l.gD)]; } };
+    grafico('cDelta', { type: 'bar', options: o3, data: { labels: rot, datasets: [{ label: 'abertura', data: diasG.map(function (l) { return l.delta === null ? null : Math.round(l.delta); }),
+      backgroundColor: diasG.map(function (l) { return l.fase ? cor('--s2') : cor('--sem'); }), borderRadius: 4, borderSkipped: false, maxBarThickness: 26 }] } });
+
+    var o6 = opcoes('cat');
+    o6.scales.y.reverse = inverter;
+    tituloY(o6, inverter ? 'S2 ADC (↑ mais úmido)' : 'S2 ADC (↑ mais seco)');
+    o6.plugins.tooltip.callbacks = { label: function (c) { return ' ' + c.dataset.label + ': ' + num(c.parsed.y); } };
+    var rIni = 'primeiros (' + D.ini3.map(rotuloDia).join(', ') + ')', rFim = 'últimos (' + D.fim3.map(rotuloDia).join(', ') + ')';
+    document.getElementById('legPerfil').innerHTML = '<span><i style="background:var(--sem)"></i>' + rIni + '</span><span><i style="background:var(--s2)"></i>' + rFim + '</span>';
+    grafico('cPerfilS2', { type: 'line', options: o6, data: { labels: horas, datasets: [
+      serie(rIni, '--sem', D.perfilIni.map(function (v) { return v === null ? null : Math.round(v); })),
+      serie(rFim, '--s2', D.perfilFim.map(function (v) { return v === null ? null : Math.round(v); }))
+    ] } });
+
+    var diasR = D.dias.filter(function (l) { return l.fase === 1; });
+    var o7 = opcoes('cat');
+    tituloY(o7, 'minutos'); o7.scales.y.beginAtZero = true;
+    o7.plugins.tooltip.callbacks = { label: function (c) { var l = diasR[c.dataIndex]; return ' ' + num(c.parsed.y) + ' min em ' + l.regas + (l.regas === 1 ? ' rega' : ' regas'); } };
+    grafico('cRegaDia', { type: 'bar', options: o7, data: { labels: diasR.map(function (l) { return rotuloDia(l.k); }), datasets: [{ label: 'minutos', data: diasR.map(function (l) { return Math.round(l.minRega); }),
+      backgroundColor: cor('--rega-ink'), borderRadius: 4, borderSkipped: false, maxBarThickness: 26 }] } });
+
+    var o8 = opcoes('cat');
+    tituloY(o8, 'horas desde a rega anterior'); o8.scales.y.beginAtZero = true; o8.scales.y.suggestedMax = 30;
+    o8.plugins.tooltip.callbacks = { label: function (c) { return ' ' + num(c.parsed.y, 1) + ' h'; } };
+    grafico('cIntervalo', { type: 'line', options: o8, data: { labels: D.intervalos.map(function (x) { return fDataHora(x.t); }), datasets: [
+      serie('intervalo', '--rega-ink', D.intervalos.map(function (x) { return Math.round(x.h * 10) / 10; }), { pointRadius: 4, pointBorderColor: cor('--surface'), pointBorderWidth: 2, tension: 0 })
+    ] } });
+
+    var t = '<thead><tr><th>Dia</th><th>Fase</th><th>S2 mediana</th><th>S2 mín–máx</th><th>S1 mediana</th><th>Secagem manhã S1</th><th>Secagem manhã S2</th><th>Razão S2÷S1</th><th>Abertura diurna</th><th>Regas</th><th>Min. rega</th></tr></thead><tbody>';
+    D.dias.slice().reverse().forEach(function (l) {
+      t += '<tr><td>' + rotuloDia(l.k) + (l.cobertura < 0.9 ? ' <span class="mudo">parcial</span>' : '') + '</td><td>' + (l.faseManha ? 'com coentro' : (l.fase ? 'plantio' : 'sem cultura')) + '</td><td>' + num(l.s2med) + '</td><td>' + num(l.s2min) + '–' + num(l.s2max) +
+           '</td><td>' + num(l.s1med) + '</td><td>' + sinal(l.sub1) + '</td><td>' + sinal(l.sub2) + '</td><td>' + num(l.razao, 2) + '</td><td>' + sinal(l.delta) + '</td><td>' + l.regas + '</td><td>' + num(l.minRega) + '</td></tr>';
+    });
+    document.getElementById('tabela').innerHTML = t + '</tbody>';
+  }
+
+  // ---------- controles ----------
+  var PRONTO = preparar(DADOS);
+  var fs = ler('sis-coentro-faixa'); if (fs) faixa = fs;
+  inverter = ler('sis-coentro-inverter') === '1';
+  document.getElementById('inverter').checked = inverter;
+  Array.prototype.forEach.call(document.querySelectorAll('#faixa button'), function (b) {
+    b.setAttribute('aria-pressed', b.dataset.h === faixa ? 'true' : 'false');
+    b.addEventListener('click', function () {
+      faixa = b.dataset.h; gravar('sis-coentro-faixa', faixa);
+      Array.prototype.forEach.call(document.querySelectorAll('#faixa button'), function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      desenhar();
+    });
+  });
+  document.getElementById('inverter').addEventListener('change', function (e) { inverter = e.target.checked; gravar('sis-coentro-inverter', inverter ? '1' : '0'); desenhar(); });
+  // redesenha com as cores do tema quando o leitor troca claro/escuro
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', desenhar);
+  new MutationObserver(desenhar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(desenhar);
+  desenhar();
+})();
+</script>
