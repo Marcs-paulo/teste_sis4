@@ -34,10 +34,14 @@ String wifiSsid, wifiSenha, scriptUrl, otaSenha;
 
 // ── VERSÃO E ATUALIZAÇÃO PELA INTERNET ─────────────────────
 // Para publicar uma versão nova: aumente FW_VERSAO, compile o env "release" e
-// suba .pio/build/release/firmware.bin numa release do GitHub com a tag
-// fw-<FW_VERSAO>. Depois mande fw=<FW_VERSAO> pela config remota.
+// suba .pio/build/release/firmware.bin numa release do repositório
+// Marcs-paulo/sis-firmware com a tag fw-<FW_VERSAO>. Depois mande
+// fw=<FW_VERSAO> pela config remota.
+// Os firmwares ficam num repositório PÚBLICO separado: o código-fonte é
+// privado e a placa não consegue baixar de repositório privado. O firmware
+// "release" não tem senhas, então pode ficar público.
 #define FW_VERSAO    2
-#define FW_URL_BASE  "https://github.com/Marcs-paulo/teste_sis4/releases/download/fw-"
+#define FW_URL_BASE  "https://github.com/Marcs-paulo/sis-firmware/releases/download/fw-"
 // Versão nova fica "em prova": se não falar com o Apps Script depois de 10 min
 // ligada, ou se reiniciar 3 vezes seguidas, a placa volta sozinha para a anterior.
 #define OTA_PROVA_CONFIRMA_MS (10UL * 60000UL)
