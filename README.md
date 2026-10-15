@@ -20,9 +20,8 @@ Esta gravação instala a versão 2, a primeira que aceita atualização pela
 internet. Depois dela, ninguém precisa voltar ao local para atualizar.
 
 1. Instale o **VS Code** com a extensão **PlatformIO** e o **Git**.
-2. Baixe este repositório (é privado: o dono precisa te adicionar em
-   **Settings → Collaborators**): botão verde **Code → Download ZIP**
-   (e descompacte), ou `git clone https://github.com/Marcs-paulo/teste_sis4.git`.
+2. Baixe este repositório: botão verde **Code → Download ZIP** (e descompacte),
+   ou `git clone https://github.com/Marcs-paulo/teste_sis4.git`.
 3. Coloque na pasta `include/` o arquivo **`segredos.h`** que o dono te mandou
    por mensagem. Sem ele a compilação para com o aviso
    "Falta include/segredos.h".
@@ -78,18 +77,12 @@ que `maxH`). Valores fora disso são ignorados e aparecem em `avisos`.
    pio run -e release
    ```
    O arquivo sai em `.pio/build/release/firmware.bin`.
-3. No repositório **público** de firmwares
-   (`https://github.com/Marcs-paulo/sis-firmware`, só com os `.bin`, sem
-   código e sem senhas): **Releases → Draft a new release**. Tag **`fw-3`** (o mesmo
+3. No GitHub: **Releases → Draft a new release**. Tag **`fw-3`** (o mesmo
    número de `FW_VERSAO`). Arraste o `firmware.bin` (o nome tem que ser
    exatamente esse) e clique em **Publish release**.
 4. Mande `?cmd=set&token=<TOKEN>&fw=3`.
 5. Em até 5 minutos a placa baixa e reinicia. Em ~15 minutos a resposta da
    configuração deve mostrar `"fwAtual":3`.
-
-Este repositório (o código) é privado, e a placa não consegue baixar de
-repositório privado. Por isso os `.bin` vão para o `sis-firmware`, que precisa
-ser **público**. O firmware `release` não contém senha do WiFi nem URL.
 
 ### Proteções
 
