@@ -1,4 +1,4 @@
-# SIS — Teste 3/4 (sensor raso + coentro)
+# SIS — Teste 3/4/5 (sensor raso; Teste 5 = hortelã)
 
 Firmware da ESP32-C6 que lê dois sensores de umidade rasos (~5 cm), controla a
 eletroválvula e manda os dados para uma planilha do Google. Pode ser
@@ -57,6 +57,31 @@ A placa consulta a configuração a cada 5 minutos. A resposta mostra
 
 Faixas aceitas: `limiar` 900–2400, `maxH` 6–96, `minH` 1–48 (e `minH` menor
 que `maxH`). Valores fora disso são ignorados e aparecem em `avisos`.
+
+### Teste 5 — hortelã (firmware versão 3)
+
+Modo `diaria`: rega por **tempo fixo**, uma vez por dia, no horário configurado
+(hora de Brasília). O sensor **não** decide a rega; ele só mede a secagem entre
+regas (protocolo do Teste 5, `docs/RELATORIO_CIENTIFICO.md` §8 do app SIS).
+A duração **real** de cada rega vai para a coluna "Rega (s)" da planilha.
+
+| O que fazer | Acrescente depois de `/exec` |
+|---|---|
+| Definir a rega diária (ex.: 07:30 por 120 s) | `?cmd=set&token=<TOKEN>&hora=7&minuto=30&duracaoS=120` |
+| Ligar o Teste 5 | `?cmd=set&token=<TOKEN>&teste=5&modo=diaria` |
+| Começar do Dia 1 (satura uma vez) | `?cmd=set&token=<TOKEN>&novoTeste=1` |
+| Calibração sem regar (12–72 h após saturar) | `?cmd=set&token=<TOKEN>&modo=observa` e depois volte para `modo=diaria` |
+
+- Faixas: `hora` 0–23, `minuto` 0–59, `duracaoS` 10–2700 (45 min, o teto de
+  segurança). Enquanto `duracaoS` for 0 (não definida), o modo `diaria` só faz
+  a rega de garantia de `maxH` (enche até o platô).
+- Se a placa reiniciar ou ficar sem hora no horário, ela ainda rega até
+  30 min depois. Passando 36 h sem rega, faz uma rega da mesma duração.
+- O Teste 5 grava numa planilha **própria**: na primeira gravação o Apps Script
+  cria "SIS Teste 5 - Hortela..." no seu Drive. O link aparece em `planilhaT5`
+  na resposta da configuração.
+- `novoTeste=1` não interrompe uma rega: a placa começa o Dia 1 quando a rega
+  atual terminar. Segurar o botão no boot continua funcionando.
 
 ### Apps Script (uma vez)
 

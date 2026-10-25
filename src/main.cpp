@@ -3,7 +3,7 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <NTPClient.h>
-#include <WiFiUDP.h>
+#include <WiFiUdp.h>   // nome exato do arquivo (Linux diferencia maiusculas)
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <ArduinoOTA.h>   // OTA local (mesma rede WiFi) — p/ o amigo aí no local
@@ -23,8 +23,8 @@
   #endif
 #endif
 
-// Uma única URL do Apps Script serve os dois testes:
-//  - POST  (enviar dados): o script grava na planilha do teste ATIVO (3 ou 4)
+// Uma única URL do Apps Script serve todos os testes:
+//  - POST  (enviar dados): o script grava na planilha do teste ATIVO (3, 4 ou 5)
 //  - GET   (config)      : o firmware pergunta teste/modo/rega/versão e o dono
 //                          muda isso a distância abrindo a URL no navegador.
 String wifiSsid, wifiSenha, scriptUrl, otaSenha;
@@ -36,7 +36,7 @@ String wifiSsid, wifiSenha, scriptUrl, otaSenha;
 // Para publicar uma versão nova: aumente FW_VERSAO, compile o env "release" e
 // suba .pio/build/release/firmware.bin numa release do GitHub com a tag
 // fw-<FW_VERSAO>. Depois mande fw=<FW_VERSAO> pela config remota.
-#define FW_VERSAO    2
+#define FW_VERSAO    3   // 3 = Teste 5 (hortelã): modo "diaria" + duração real da rega
 #define FW_URL_BASE  "https://github.com/Marcs-paulo/teste_sis4/releases/download/fw-"
 // Versão nova fica "em prova": se não falar com o Apps Script depois de 10 min
 // ligada, ou se reiniciar 3 vezes seguidas, a placa volta sozinha para a anterior.
@@ -82,8 +82,23 @@ String wifiSsid, wifiSenha, scriptUrl, otaSenha;
 //  CULTIVO  (Teste 4, COM cultura): irriga de verdade — rega quando o solo
 //           raso seca até o limiar (controle por umidade), mantendo a planta.
 //           A diferença T4-T3 isola a transpiração da alface.
+//  DIARIA   (Teste 5, hortelã): rega por TEMPO FIXO uma vez por dia, no
+//           horário configurado (hora:minuto, hora de Brasília) e pela duração
+//           configurada (duracaoS). NÃO usa o sensor para decidir: o sensor só
+//           mede a secagem entre regas (protocolo §8.4 do RELATORIO_CIENTIFICO).
+//           Enquanto duracaoS não for configurada (0), só vale a garantia de
+//           água de maxH (enche até o platô), para a planta não ficar sem rega.
 #define MODO_OBSERVA  0
 #define MODO_CULTIVO  1
+#define MODO_DIARIA   2
+
+// Rega diária do modo DIARIA (ajustável a distância: hora, minuto, duracaoS)
+#define DIARIA_HORA_PADRAO     7
+#define DIARIA_MINUTO_PADRAO   0
+#define DIARIA_DURACAO_PADRAO  0      // 0 = ainda não configurada
+#define DURACAO_MIN_S          10
+#define DURACAO_MAX_S          2700   // 45 min (= teto de segurança do enchimento)
+#define DIARIA_JANELA_MIN      30     // reiniciou/perdeu o horário: ainda rega até 30 min depois
 
 // Gatilho de rega no modo CULTIVO (valores do sensor raso, do Teste 3 real:
 // úmido ~1000, seco 1500-2000). Rega quando a umidade de controle passa do
@@ -133,6 +148,11 @@ int  testeAtivo   = 3;
 int  regaLimiar   = REGA_LIMIAR_PADRAO;
 int  regaMaxH     = REGA_MAX_H_PADRAO;
 int  regaMinH     = REGA_MIN_H_PADRAO;
+int  regaHora     = DIARIA_HORA_PADRAO;
+int  regaMinuto   = DIARIA_MINUTO_PADRAO;
+int  regaDuracaoS = DIARIA_DURACAO_PADRAO;
+bool regaCronometrada = false;   // rega atual fecha pelo TEMPO (modo diária), não pelo platô
+int  ultRegaS     = -1;          // duração real da última rega (vai na próxima leitura)
 int  fwPedido     = 0;       // versão que a config remota pediu (0 = nenhuma)
 int  fwTentada    = 0;
 int  fwTentativas = 0;
@@ -144,6 +164,7 @@ struct Leitura {
   float avg;
   bool  valveAberta;
   int   ciclo;
+  int   regaS;     // duração real da rega que acabou de terminar (-1 = nenhuma)
 };
 
 const int BUF_MAX = 1080;
@@ -174,12 +195,14 @@ bool ntpIniciado         = false;
 bool estadoRecuperado    = false;
 bool primeiroEnvioFeito  = false;
 bool otaConfigurado      = false;
+bool pedidoNovoTeste     = false;   // config remota pediu para começar um teste novo
 
 WiFiUDP   ntpUDP;
 NTPClient ntp(ntpUDP, "pool.ntp.org", -3 * 3600);
 Preferences prefs;
 
 // ── FUNÇÕES ────────────────────────────────────────────────
+const char* nomeModo(int m);
 
 void valvulaAbrir()  { digitalWrite(VALVE_PIN, RELE_ATIVO_EM_LOW ? LOW  : HIGH); }
 void valvulaFechar() { digitalWrite(VALVE_PIN, RELE_ATIVO_EM_LOW ? HIGH : LOW); }
@@ -233,6 +256,7 @@ void salvarEstado() {
   prefs.putULong("regaEpoch",  agora - (millis() - tUltRega) / 1000UL);
   if (estado == ENCHENDO) {
     prefs.putULong("cicloEpoch", agora - (millis() - tCiclo) / 1000UL);
+    prefs.putBool("rTimed", regaCronometrada);
   }
 }
 
@@ -242,6 +266,8 @@ void limparEstadoSalvo() {
   prefs.remove("startEpoch");
   prefs.remove("regaEpoch");
   prefs.remove("cicloEpoch");
+  prefs.remove("rTimed");
+  prefs.remove("rDia");
 }
 
 void recuperarEstadoSalvo() {
@@ -271,6 +297,7 @@ void recuperarEstadoSalvo() {
       Serial.println("[RECUPERACAO] Reinicio - teto do ciclo vencido - DRENANDO.");
     } else {
       tCiclo = millis() - decCiclo; estado = ENCHENDO; valvulaAbrir();
+      regaCronometrada = prefs.getBool("rTimed", false);
       Serial.println("[RECUPERACAO] Reinicio - retomando ENCHENDO.");
     }
   } else {
@@ -344,6 +371,28 @@ void carregarParamsRega() {
   regaLimiar = prefs.getInt("rLimiar", REGA_LIMIAR_PADRAO);
   regaMaxH   = prefs.getInt("rMaxH",   REGA_MAX_H_PADRAO);
   regaMinH   = prefs.getInt("rMinH",   REGA_MIN_H_PADRAO);
+  regaHora     = prefs.getInt("dHora", DIARIA_HORA_PADRAO);
+  regaMinuto   = prefs.getInt("dMin",  DIARIA_MINUTO_PADRAO);
+  regaDuracaoS = prefs.getInt("dDur",  DIARIA_DURACAO_PADRAO);
+}
+
+// Horário e duração da rega diária (modo DIARIA). Fora da faixa = ignorado.
+void aplicarParamsDiaria(JsonDocument& doc) {
+  int h = doc["hora"]     | regaHora;
+  int m = doc["minuto"]   | regaMinuto;
+  int d = doc["duracaoS"] | regaDuracaoS;
+  if (h < 0 || h > 23) { Serial.printf("[CONFIG] hora %d fora de 0-23 - ignorada\n", h); h = regaHora; }
+  if (m < 0 || m > 59) { Serial.printf("[CONFIG] minuto %d fora de 0-59 - ignorado\n", m); m = regaMinuto; }
+  if (d != 0 && (d < DURACAO_MIN_S || d > DURACAO_MAX_S)) {
+    Serial.printf("[CONFIG] duracaoS %d fora de %d-%d - ignorada\n", d, DURACAO_MIN_S, DURACAO_MAX_S);
+    d = regaDuracaoS;
+  }
+  if (h != regaHora || m != regaMinuto || d != regaDuracaoS) {
+    Serial.printf("[CONFIG] Rega diaria: %02d:%02d por %d s -> %02d:%02d por %d s\n",
+                  regaHora, regaMinuto, regaDuracaoS, h, m, d);
+    regaHora = h; regaMinuto = m; regaDuracaoS = d;
+    prefs.putInt("dHora", h); prefs.putInt("dMin", m); prefs.putInt("dDur", d);
+  }
 }
 
 // Aplica limiar/maxH/minH vindos da config, só se estiverem nas faixas aceitas
@@ -394,21 +443,32 @@ void consultarConfig() {
   int code = http.GET();
   if (code == 200) {
     String body = http.getString();
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<1024> doc;   // config cresceu no fw 3 (rega diária, novoTeste, link do T5)
     if (deserializeJson(doc, body) == DeserializationError::Ok) {
       int novoTeste = doc["teste"] | testeAtivo;
       const char* m = doc["modo"] | "";
       int novoModo = modoOperacao;
       if (strcmp(m, "cultivo") == 0) novoModo = MODO_CULTIVO;
       else if (strcmp(m, "observa") == 0) novoModo = MODO_OBSERVA;
+      else if (strcmp(m, "diaria") == 0)  novoModo = MODO_DIARIA;
 
       if (novoTeste != testeAtivo || novoModo != modoOperacao) {
         Serial.printf("[CONFIG] Mudou: teste %d->%d, modo %s\n",
-                      testeAtivo, novoTeste, novoModo == MODO_CULTIVO ? "CULTIVO" : "OBSERVA");
+                      testeAtivo, novoTeste, nomeModo(novoModo));
       }
       testeAtivo   = novoTeste;
       modoOperacao = novoModo;
       aplicarParamsRega(doc);
+      aplicarParamsDiaria(doc);
+
+      // Começar um teste novo a distância (contador "novoTeste" no Apps Script).
+      // Na primeira vez que esta versão vê o contador, só anota (não reinicia).
+      int novoN = doc["novoTeste"] | -1;
+      if (novoN >= 0) {
+        int vistoN = prefs.getInt("novoN", -1);
+        if (vistoN < 0) prefs.putInt("novoN", novoN);
+        else if (novoN > vistoN) { prefs.putInt("novoN", novoN); pedidoNovoTeste = true; }
+      }
       fwPedido = doc["fw"] | 0;
       // falou com o Apps Script depois de 10 min ligada: versão nova aprovada
       if (emProva && millis() >= OTA_PROVA_CONFIRMA_MS) confirmarFirmware();
@@ -417,6 +477,10 @@ void consultarConfig() {
     Serial.printf("[CONFIG] GET falhou (HTTP %d) - mantendo config atual\n", code);
   }
   http.end();
+}
+
+const char* nomeModo(int m) {
+  return m == MODO_CULTIVO ? "CULTIVO" : (m == MODO_DIARIA ? "DIARIA" : "OBSERVA");
 }
 
 void configurarOTA() {
@@ -514,6 +578,7 @@ bool enviarLote() {
       r["avg"]       = (float)((int)(buf[i].avg * 10 + 0.5f)) / 10.0f;
       r["valve"]     = buf[i].valveAberta ? "ABERTA" : "FECHADA";
       r["cycle"]     = buf[i].ciclo;
+      if (buf[i].regaS >= 0) r["regaS"] = buf[i].regaS;   // duração real da rega (s)
     }
     String json;
     serializeJson(doc, json);
@@ -540,15 +605,50 @@ bool enviarLote() {
 }
 
 void encerrarCiclo(const char* motivo) {
-  estado = DRENANDO; numCiclos++;
+  ultRegaS = (int)((millis() - tCiclo) / 1000UL);   // duração REAL (vai para a planilha)
+  estado = DRENANDO; numCiclos++; regaCronometrada = false;
   valvulaFechar(); ledDrenando(); resetPlateau(); secoConsec = 0; salvarEstado();
-  Serial.printf("[%s] Ciclo %d completo - Valvula FECHADA.\n", motivo, numCiclos);
+  Serial.printf("[%s] Ciclo %d completo - Valvula FECHADA apos %d s.\n", motivo, numCiclos, ultRegaS);
 }
 
 void iniciarCiclo(const char* motivo) {
   estado = ENCHENDO; tCiclo = millis(); tUltRega = millis();
   valvulaAbrir(); ledEnchendo(); resetPlateau(); secoConsec = 0; salvarEstado();
   Serial.printf("[%s] Ciclo %d - Valvula ABERTA\n", motivo, numCiclos + 1);
+}
+
+// Rega por tempo fixo (modo DIARIA): fecha por duracaoS, não pelo platô.
+void iniciarRegaCronometrada(const char* motivo) {
+  regaCronometrada = true;
+  iniciarCiclo(motivo);
+  Serial.printf("[%s] Rega diaria de %d s\n", motivo, regaDuracaoS);
+}
+
+// Começa um teste do zero (botão em AGUARDANDO ou "novoTeste" remoto):
+// envia o que estiver guardado, zera o dia e satura uma vez.
+void comecarTeste(const char* motivo) {
+  enviarLote();
+  bufCount = 0; numCiclos = 0;
+  tTeste = millis(); tEnvio = millis();
+  primeiroEnvioFeito = false;
+  prefs.remove("rDia");
+  regaCronometrada = false;
+  Serial.printf("[%s] Teste %d comecando (Dia 1, modo %s)\n", motivo, testeAtivo, nomeModo(modoOperacao));
+  iniciarCiclo("INICIO");   // satura uma vez ao começar (em todos os modos)
+}
+
+// Modo DIARIA: está no horário da rega de hoje (com tolerância) e ainda não regou hoje?
+bool horaDaRegaDiaria() {
+  if (!ntp.isTimeSet() || regaDuracaoS <= 0) return false;
+  time_t t = ntp.getEpochTime();             // já em hora de Brasília (offset do NTPClient)
+  struct tm* ti = gmtime(&t);
+  int agoraMin = ti->tm_hour * 60 + ti->tm_min;
+  int alvoMin  = regaHora * 60 + regaMinuto;
+  int diaChave = (ti->tm_year + 1900) * 1000 + ti->tm_yday;
+  if (prefs.getInt("rDia", 0) == diaChave) return false;              // já regou hoje
+  if (agoraMin < alvoMin || agoraMin >= alvoMin + DIARIA_JANELA_MIN) return false;
+  prefs.putInt("rDia", diaChave);
+  return true;
 }
 
 // Baixa e grava a versão pedida pela config, se for mais nova. Nunca durante
@@ -604,8 +704,8 @@ void setup() {
   while (!Serial && millis() - tSerial < 3000) delay(10);
   verificarProva();
 
-  Serial.println("\n=== SIS Teste 3/4 - Sensor RASO (config REMOTA) ===");
-  Serial.println("Dois sensores rasos (~5cm). Modo OBSERVA(T3) / CULTIVO(T4) via config remota.");
+  Serial.println("\n=== SIS Teste 3/4/5 - Sensor RASO (config REMOTA) ===");
+  Serial.println("Dois sensores rasos (~5cm). Modo OBSERVA(T3) / CULTIVO(T4) / DIARIA(T5) via config remota.");
 
   pinMode(S1_PWR,  OUTPUT);
   pinMode(S2_PWR,  OUTPUT);
@@ -649,9 +749,9 @@ void setup() {
     wifiEstavaOk = false;
     ledErroWifi();
   }
-  Serial.printf("Config atual: teste %d | modo %s | rega: limiar %d, max %dh, min %dh\n",
-                testeAtivo, modoOperacao == MODO_CULTIVO ? "CULTIVO" : "OBSERVA",
-                regaLimiar, regaMaxH, regaMinH);
+  Serial.printf("Config atual: teste %d | modo %s | rega: limiar %d, max %dh, min %dh | diaria %02d:%02d por %d s\n",
+                testeAtivo, nomeModo(modoOperacao),
+                regaLimiar, regaMaxH, regaMinH, regaHora, regaMinuto, regaDuracaoS);
   Serial.println("Pressione o botao (GPIO19 -> GND) para iniciar.");
 }
 
@@ -699,14 +799,17 @@ void loop() {
       int s1, s2, s1f, s2f; lerEfiltrar(s1, s2, s1f, s2f);
       Serial.printf("[AGUARDANDO] S1:%d  S2:%d\n", s1, s2);
     }
-    if (botaoPressionado()) {
-      enviarLote();
-      bufCount = 0; numCiclos = 0;
-      tTeste = millis(); tEnvio = millis();
-      primeiroEnvioFeito = false;
-      iniciarCiclo("INICIO");   // satura uma vez ao começar (nos dois modos)
+    if (botaoPressionado() || pedidoNovoTeste) {
+      pedidoNovoTeste = false;
+      comecarTeste("INICIO");
     }
     return;
+  }
+
+  // Teste novo pedido a distância (ex.: começar o Teste 5): nunca no meio de uma rega
+  if (pedidoNovoTeste && estado != ENCHENDO) {
+    pedidoNovoTeste = false;
+    comecarTeste("NOVO_TESTE");
   }
   if (estado == CONCLUIDO) return;
 
@@ -741,6 +844,8 @@ void loop() {
         buf[bufCount].s1 = s1; buf[bufCount].s2 = s2;
         buf[bufCount].avg = avgGrava; buf[bufCount].valveAberta = vAb;
         buf[bufCount].ciclo = numCiclos + 1;
+        buf[bufCount].regaS = ultRegaS;      // só na 1ª leitura depois de uma rega
+        ultRegaS = -1;
         bufCount++;
       } else ledErroBuffer();
     }
@@ -751,16 +856,23 @@ void loop() {
       (nVal > 0 ? umid : avgGrava), nVal,
       vAb ? "ABERTA" : "FECHADA",
       estado == ENCHENDO ? "ENCHENDO" : "DRENANDO", numCiclos + 1,
-      modoOperacao == MODO_CULTIVO ? "CULTIVO" : "OBSERVA");
+      nomeModo(modoOperacao));
 
     if (nVal == 0) ledErroBuffer();
 
     // ── ENCHENDO: platô OU teto → fecha (nos dois modos) ──
     if (estado == ENCHENDO) {
-      bool plato         = detectarPlato();
       bool tempoEsgotado = (millis() - tCiclo) >= ENCHENDO_MAX_MS;
-      if (plato)              encerrarCiclo("SATURACAO");
-      else if (tempoEsgotado) encerrarCiclo("SEGURANCA");
+      if (regaCronometrada) {
+        // Rega diária: fecha pelo TEMPO configurado (o platô não interrompe)
+        bool fim = (millis() - tCiclo) >= (unsigned long)regaDuracaoS * 1000UL;
+        if (fim)                encerrarCiclo("REGA_DIARIA");
+        else if (tempoEsgotado) encerrarCiclo("SEGURANCA");
+      } else {
+        bool plato = detectarPlato();
+        if (plato)              encerrarCiclo("SATURACAO");
+        else if (tempoEsgotado) encerrarCiclo("SEGURANCA");
+      }
     }
 
     // ── DRENANDO ─────────────────────────────────────────
@@ -783,6 +895,17 @@ void loop() {
 
         if (secou)      iniciarCiclo("SOLO_SECO");
         else if (tempo) iniciarCiclo("AGENDADA_TEMPO");
+      }
+      // No modo DIARIA (Teste 5, hortelã): rega por tempo fixo no horário do dia.
+      // Sem duração configurada ainda: só a garantia de água (maxH, até o platô).
+      else if (modoOperacao == MODO_DIARIA) {
+        if (horaDaRegaDiaria()) iniciarRegaCronometrada("REGA_DIARIA");
+        // perdeu o horário (sem hora/queda de energia): não deixa a planta mais de 36 h sem água
+        else if (regaDuracaoS > 0 && millis() - tUltRega >= 36UL * 3600000UL)
+          iniciarRegaCronometrada("REGA_ATRASADA");
+        else if (regaDuracaoS <= 0 &&
+                 millis() - tUltRega >= (unsigned long)regaMaxH * 3600000UL)
+          iniciarCiclo("AGENDADA_TEMPO");
       }
     }
   }
